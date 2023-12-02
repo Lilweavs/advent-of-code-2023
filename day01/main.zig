@@ -1,11 +1,10 @@
 const std = @import("std");
 
 pub fn main() !void {
-    std.debug.print("\n", .{});
-    const part1 = try solve(@embedFile("input.txt"));
+    const part1 = solvePart1(@embedFile("input.txt"));
     std.debug.print("Day 01|1: {d}\n", .{part1});
-    // const part2 = try solve(@embedFile("input.txt"));
-    // std.debug.print("Day 01|2: {d}\n", .{part2});
+    const part2 = solvePart2(@embedFile("input.txt"));
+    std.debug.print("Day 01|2: {d}\n", .{part2});
 }
 
 const numbers = [_][]const u8{ "one", "two", "three", "four", "five", "six", "seven", "eight", "nine" };
@@ -54,42 +53,47 @@ fn rcheckIfNumber(str: []const u8) usize {
     return 0;
 }
 
-fn solve(input: []const u8) !usize {
-    var lines = std.mem.tokenize(u8, input, "\r\n");
+fn solvePart1(input: []const u8) usize {
+    var lines = std.mem.tokenizeScalar(u8, input, '\n');
 
-    // var total: usize = 0;
-    // while (lines.next()) |line| {
-    //     for (line) |c| {
-    //         if (c > 48 and c < 58) {
-    //             total += (c - '0') * 10;
-    //             break;
-    //         }
-    //     }
+    var total: usize = 0;
+    while (lines.next()) |line| {
+        for (line) |c| {
+            if (c > 48 and c < 58) {
+                total += (c - '0') * 10;
+                break;
+            }
+        }
 
-    //     for (line, 0..) |_, i| {
-    //         const c = line[line.len - 1 - i];
-    //         if (c > 48 and c < 58) {
-    //             total += (c - '0');
-    //             break;
-    //         }
-    //     }
-    // }
+        for (line, 0..) |_, i| {
+            const c = line[line.len - 1 - i];
+            if (c > 48 and c < 58) {
+                total += (c - '0');
+                break;
+            }
+        }
+    }
+
+    return total;
+}
+
+fn solvePart2(input: []const u8) usize {
+    var lines = std.mem.tokenizeScalar(u8, input, '\n');
 
     var total: usize = 0;
     while (lines.next()) |line| {
         total += checkIfNumber(line);
         total += rcheckIfNumber(line);
     }
-
     return total;
 }
 
 test "test-part1" {
-    const result = try solve(@embedFile("test1.txt"));
-    try std.testing.expectEqual(result, 77);
+    const result = solvePart1(@embedFile("test1.txt"));
+    try std.testing.expectEqual(result, 142);
 }
 
 test "test-part2" {
-    const result = try solve(@embedFile("test1.txt"));
+    const result = solvePart2(@embedFile("test2.txt"));
     try std.testing.expectEqual(result, 281);
 }
