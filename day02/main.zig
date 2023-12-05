@@ -1,36 +1,28 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const part1 = try solve(@embedFile("input.txt"));
+    const part1 = try solve(@embedFile("input.txt"), part1Strategy);
     std.debug.print("Day 02|1: {d}\n", .{part1});
-    // const part2 = solvePart2(@embedFile("input.txt"));
-    // std.debug.print("Day 01|2: {d}\n", .{part2});
+    const part2 = try solve(@embedFile("input.txt"), part2Strategy);
+    std.debug.print("Day 01|2: {d}\n", .{part2});
 }
 
 const CubeSet = struct { red: usize = 0, blue: usize = 0, green: usize = 0 };
+const Games = std.ArrayList(std.ArrayList(CubeSet));
 
-const Game = std.ArrayList(std.ArrayList(CubeSet));
-
-fn solve(input: []const u8) !usize {
+fn solve(input: []const u8, comptime strategy: fn (*std.ArrayList(std.ArrayList(CubeSet))) usize) !usize {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
     var lines = std.mem.tokenizeScalar(u8, input, '\n');
 
-    var games = std.ArrayList(std.ArrayList(CubeSet)).init(allocator);
+    var games = Games.init(allocator);
     while (lines.next()) |line| {
-        var start: usize = 0;
-        for (0..line.len) |i| {
-            if (line[i] == ':') {
-                start = i + 1;
-                break;
-            }
-        }
-
         try games.append(std.ArrayList(CubeSet).init(allocator));
         var gamePtr = &games.items[games.items.len - 1];
 
-        var hands = std.mem.tokenizeScalar(u8, line[start..], ';');
+        var hands = std.mem.tokenize(u8, line, ":;");
+        _ = hands.next(); // Trim Game XX:
 
         while (hands.next()) |hand| {
             var str = std.mem.tokenize(u8, hand, " ,");
@@ -39,32 +31,36 @@ fn solve(input: []const u8) !usize {
             var cubePtr = &gamePtr.items[gamePtr.items.len - 1];
 
             while (str.next()) |tmp| {
-                var num = try std.fmt.parseInt(usize, tmp, 10);
-                var tmp2 = str.next().?;
-                if (tmp2[0] == 'r') {
-                    cubePtr.red = num;
-                } else if (tmp2[0] == 'b') {
-                    cubePtr.blue = num;
-                } else {
-                    cubePtr.green = num;
+                const num = try std.fmt.parseInt(usize, tmp, 10);
+                const tmp2 = str.next().?;
+                switch (tmp2[0]) {
+                    'r' => cubePtr.red = num,
+                    'b' => cubePtr.blue = num,
+                    'g' => cubePtr.green = num,
+                    else => unreachable,
                 }
             }
         }
     }
 
-    // std.debug.print("{d}\n", .{games.items.len});
+    return strategy(&games);
+}
 
-    // var total: usize = 0;
-    // for (games.items, 1..) |game, i| {
-    //     for (game.items) |cubes| {
-    //         if (cubes.red > 12 or cubes.green > 13 or cubes.blue > 14) {
-    //             break;
-    //         }
-    //     } else {
-    //         total += i;
-    //     }
-    // }
+fn part1Strategy(games: *std.ArrayList(std.ArrayList(CubeSet))) usize {
+    var total: usize = 0;
+    for (games.items, 1..) |game, i| {
+        for (game.items) |cubes| {
+            if (cubes.red > 12 or cubes.green > 13 or cubes.blue > 14) {
+                break;
+            }
+        } else {
+            total += i;
+        }
+    }
+    return total;
+}
 
+fn part2Strategy(games: *std.ArrayList(std.ArrayList(CubeSet))) usize {
     var total: usize = 0;
     for (games.items) |game| {
         var max = CubeSet{};
@@ -76,6 +72,5 @@ fn solve(input: []const u8) !usize {
             total += (max.red * max.green * max.blue);
         }
     }
-
     return total;
 }
