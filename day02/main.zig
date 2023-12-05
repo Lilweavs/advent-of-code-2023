@@ -74,3 +74,13 @@ fn part2Strategy(games: *std.ArrayList(std.ArrayList(CubeSet))) usize {
     }
     return total;
 }
+
+test "test-part1" {
+    const result = try solve(@embedFile("test.txt"), part1Strategy);
+    try std.testing.expectEqual(result, 8);
+}
+
+test "test-part2" {
+    const result = try solve(@embedFile("test.txt"), part2Strategy);
+    try std.testing.expectEqual(result, 2286);
+}
