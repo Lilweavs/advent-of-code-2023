@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn main() !void {
     const part1 = try solve(@embedFile("test.txt"));
-    std.debug.print("Day 01|1: {d}\n", .{part1});
+    std.debug.print("Day 02|1: {d}\n", .{part1});
     // const part2 = solvePart2(@embedFile("input.txt"));
     // std.debug.print("Day 01|2: {d}\n", .{part2});
 }
@@ -32,11 +32,14 @@ fn solve(input: []const u8) !usize {
 
         var hands = std.mem.tokenizeScalar(u8, line[start..], ';');
 
-        while (hands.next()) |hand| {
+        var i: usize = 0;
+        while (hands.next()) |hand| : (i += 1) {
             var str = std.mem.tokenize(u8, hand, " ,");
 
             try gamePtr.append(Cubes{});
             var cubePtr = gamePtr.getLast();
+
+            // std.debug.print("{d}, {d}\n", .{ gamePtr.items.len, i });
 
             while (str.next()) |tmp| {
                 var num = try std.fmt.parseInt(usize, tmp, 10);
@@ -49,14 +52,17 @@ fn solve(input: []const u8) !usize {
                     cubePtr.green = num;
                 }
             }
-
             // std.debug.print("r: {d}, g: {d}, b: {d}\n", .{ cubePtr.red, cubePtr.green, cubePtr.blue });
         }
+        std.debug.print("game len: {d}\n", .{gamePtr.items.len});
     }
+
+    std.debug.print("{d}\n", .{games.items.len});
 
     var total: usize = 0;
     for (games.items, 0..) |game, i| {
         for (game.items) |cubes| {
+            std.debug.print("r: {d}, g: {d}, b: {d}\n", .{ cubes.red, cubes.green, cubes.blue });
             if (cubes.red > 12 or cubes.green > 13 or cubes.blue > 14) {
                 break;
             }
