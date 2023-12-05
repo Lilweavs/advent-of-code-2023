@@ -11,18 +11,17 @@ const numbers = [_][]const u8{ "one", "two", "three", "four", "five", "six", "se
 
 fn checkIfNumber(str: []const u8) usize {
     for (str, 0..) |c, i| {
-        if (c > 48 and c < 58) {
+        if (std.ascii.isDigit(c)) {
             return (c - '0') * 10;
         }
 
-        for (numbers, 0..) |numStr, num| {
+        for (numbers, 1..) |numStr, num| {
             for (0..numStr.len) |j| {
                 if (str[i + j] != numStr[j]) {
                     break;
                 }
-                if (j == numStr.len - 1) {
-                    return (num + 1) * 10;
-                }
+            } else {
+                return num * 10;
             }
         }
     }
@@ -32,11 +31,11 @@ fn checkIfNumber(str: []const u8) usize {
 fn rcheckIfNumber(str: []const u8) usize {
     for (0..str.len) |i| {
         const c = str[str.len - 1 - i];
-        if (c > 48 and c < 58) {
+        if (std.ascii.isDigit(c)) {
             return (c - '0');
         }
 
-        for (numbers, 0..) |numStr, num| {
+        for (numbers, 1..) |numStr, num| {
             if (i < numStr.len - 1) {
                 continue;
             }
@@ -44,9 +43,8 @@ fn rcheckIfNumber(str: []const u8) usize {
                 if (str[str.len - 1 - i + j] != numStr[j]) {
                     break;
                 }
-                if (j == numStr.len - 1) {
-                    return (num + 1);
-                }
+            } else {
+                return num;
             }
         }
     }
@@ -59,15 +57,15 @@ fn solvePart1(input: []const u8) usize {
     var total: usize = 0;
     while (lines.next()) |line| {
         for (line) |c| {
-            if (c > 48 and c < 58) {
+            if (std.ascii.isDigit(c)) {
                 total += (c - '0') * 10;
                 break;
             }
         }
 
-        for (line, 0..) |_, i| {
+        for (0..line.len) |i| {
             const c = line[line.len - 1 - i];
-            if (c > 48 and c < 58) {
+            if (std.ascii.isDigit(c)) {
                 total += (c - '0');
                 break;
             }
