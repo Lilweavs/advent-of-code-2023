@@ -7,8 +7,8 @@ pub fn main() !void {
     // std.debug.print("Day 01|2: {d}\n", .{part2});
 }
 
-fn parseNumber(str: *std.ArrayList(u8), idx: usize) usize {
-    if (!std.ascii.isDigit(str.items[idx])) return 0;
+fn parseNumber(str: *std.ArrayList(u8), idx: usize) ?usize {
+    if (!std.ascii.isDigit(str.items[idx])) return null;
     var left: usize = idx;
     var right: usize = idx;
     while (right < str.items.len and std.ascii.isDigit(str.items[right])) {
@@ -53,38 +53,78 @@ fn solve(input: []const u8) !usize {
     for (0..schematic.items.len) |i| {
         for (0..schematic.items[i].items.len) |j| {
             const c = schematic.items[i].items[j];
-            if (c == '.' or std.ascii.isAlphanumeric(c)) continue;
+            // if (c == '.' or std.ascii.isAlphanumeric(c)) continue;
+            if (c != '*') continue;
+            var gears: usize = 0;
+            var gearRatio: usize = 1;
+
             if (j > 0) {
-                total += parseNumber(&schematic.items[i], j - 1);
+                // total += parseNumber(&schematic.items[i], j - 1);
+                if (parseNumber(&schematic.items[i], j - 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // left
 
             if (j < schematic.items[i].items.len - 1) {
-                total += parseNumber(&schematic.items[i], j + 1);
+                // total += parseNumber(&schematic.items[i], j + 1);
+                if (parseNumber(&schematic.items[i], j + 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // right
 
             if (i > 0) {
-                total += parseNumber(&schematic.items[i - 1], j);
+                // total += parseNumber(&schematic.items[i - 1], j);
+                if (parseNumber(&schematic.items[i - 1], j)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // up
 
             if (i < schematic.items.len - 1) {
-                total += parseNumber(&schematic.items[i + 1], j);
+                // total += parseNumber(&schematic.items[i + 1], j);
+                if (parseNumber(&schematic.items[i + 1], j)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // down
 
             if (j > 0 and i > 0) {
-                total += parseNumber(&schematic.items[i - 1], j - 1);
+                // total += parseNumber(&schematic.items[i - 1], j - 1);
+                if (parseNumber(&schematic.items[i - 1], j - 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // left up
 
             if ((j < schematic.items[i].items.len - 1) and i > 0) {
-                total += parseNumber(&schematic.items[i - 1], j + 1);
+                // total += parseNumber(&schematic.items[i - 1], j + 1);
+                if (parseNumber(&schematic.items[i - 1], j + 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // right up
 
             if (j > 0 and i < (schematic.items.len - 1)) {
-                total += parseNumber(&schematic.items[i + 1], j - 1);
+                // total += parseNumber(&schematic.items[i + 1], j - 1);
+                if (parseNumber(&schematic.items[i + 1], j - 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // left down
 
             if ((j < schematic.items[i].items.len - 1) and i < (schematic.items.len - 1)) {
-                total += parseNumber(&schematic.items[i + 1], j + 1);
+                // total += parseNumber(&schematic.items[i + 1], j + 1);
+                if (parseNumber(&schematic.items[i + 1], j + 1)) |gear| {
+                    gearRatio *= gear;
+                    gears += 1;
+                }
             } // right down
+
+            if (gears == 2) {
+                total += gearRatio;
+            }
         }
         // print(&schematic);
 
