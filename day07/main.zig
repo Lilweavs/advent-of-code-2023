@@ -7,11 +7,23 @@ pub fn main() !void {
     // std.debug.print("Day 01|2: {d}\n", .{part2});
 }
 
+// fn CardStrength(in: u8) u8 {
+//     return switch (in) {
+//         '2'...'9' => in - '0' - 2,
+//         'T' => 8,
+//         'J' => 9,
+//         'Q' => 10,
+//         'K' => 11,
+//         'A' => 12,
+//         else => unreachable,
+//     };
+// }
+
 fn CardStrength(in: u8) u8 {
     return switch (in) {
-        '2'...'9' => in - '0' - 2,
-        'T' => 8,
-        'J' => 9,
+        'J' => 0,
+        '2'...'9' => in - '0' - 1,
+        'T' => 9,
         'Q' => 10,
         'K' => 11,
         'A' => 12,
@@ -23,16 +35,12 @@ fn CompareHandStrength(_: void, lhs: Hand, rhs: Hand) bool {
     const lscore = GetHandScore(lhs.hand);
     const rscore = GetHandScore(rhs.hand);
 
-    if (lscore < rscore) {
-        return true;
-    } else if (lscore > rscore) {
-        return false;
-    } else {
+    if (lscore == rscore) {
         var i: usize = 0;
         while (lhs.hand[i] == rhs.hand[i]) i += 1;
         return (CardStrength(lhs.hand[i]) < CardStrength(rhs.hand[i]));
     }
-    return false;
+    return lscore < rscore;
 }
 
 fn GetHandScore(hand: [5]u8) usize {
@@ -41,44 +49,41 @@ fn GetHandScore(hand: [5]u8) usize {
         cardNums[CardStrength(card)] += 1;
     }
 
-    if (std.mem.indexOfScalar(u8, &cardNums, 5)) |_| {
-        return 6;
-    } // 5 of a kind
+    const jokers: usize = cardNums[0];
+    std.mem.sort(u8, &cardNums, {}, std.sort.desc(u8));
 
-    if (std.mem.indexOfScalar(u8, &cardNums, 4)) |_| {
+    // part 1
+    // if (cardNums[0] == 5) return 6;
+    // if (cardNums[0] == 4) return 5;
+    // if (cardNums[0] == 3 and cardNums[1] == 2) return 4;
+    // if (cardNums[0] == 3) return 3;
+    // if (cardNums[0] == 2 and cardNums[1] == 2) return 2;
+    // if (cardNums[0] == 2) return 1;
+    // return 0;
+
+    // part 2
+    if (cardNums[0] == 5) return 6;
+    if (cardNums[0] == 4) {
+        if (jokers == 4 or jokers == 1) return 6;
         return 5;
-    } // 4 of a kind
-
-    if (std.mem.indexOfScalar(u8, &cardNums, 3)) |_| {
-        if (std.mem.indexOfScalar(u8, &cardNums, 2)) |_| {
-            return 4;
-        } else {
-            return 3;
-        }
     }
-
-    var twos: usize = 0;
-    for (cardNums) |card| {
-        if (card == 2) twos += 1;
+    if (cardNums[0] == 3 and cardNums[1] == 2) {
+        return if (jokers != 0) 6 else 4;
     }
-    if (twos == 2) return 2;
-
-    if (std.mem.indexOfScalar(u8, &cardNums, 2)) |_| {
+    if (cardNums[0] == 3) {
+        if (jokers == 3 or jokers == 1) return 5;
+        return 3;
+    }
+    if (cardNums[0] == 2 and cardNums[1] == 2) {
+        if (jokers == 2) return 5;
+        if (jokers == 1) return 4;
+        return 2;
+    }
+    if (cardNums[0] == 2) {
+        if (jokers == 2 or jokers == 1) return 3;
         return 1;
-    } // full house
-
-    return 0;
-
-    // var handScore: usize = 0;
-    // for (0..5) |i| {
-    //     if (std.mem.lastIndexOfScalar(u8, &cardNums, @intCast(5 - i))) |idx| {
-    //         const tmp = std.math.powi(usize, 13, cardNums[idx] - 1) catch 0;
-    //         handScore += idx * tmp;
-    //     }
-    // }
-
-    // // std.debug.print("score: {d}\n", .{handScore});
-    // return handScore;
+    }
+    return if (jokers == 1) 1 else 0;
 }
 
 const Hand = struct { hand: [5]u8 = [_]u8{0} ** 5, bid: usize = 0 };
@@ -105,7 +110,6 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     }
 
     std.mem.sort(Hand, records.items, {}, CompareHandStrength);
-    PrintHands(records);
 
     var total: usize = 0;
 
@@ -113,17 +117,5 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         total += hand.bid * i;
     }
 
-    std.debug.print("score: {d}\n", .{GetHandScore(records.items[0].hand)});
-
     return total;
-}
-
-fn PrintHands(records: std.ArrayList(Hand)) void {
-    for (records.items) |game| {
-        std.debug.print("{s}\n", .{game.hand});
-        // for (game.hand) |v| {
-        //     std.debug.print("{d} ", .{v});
-        // }
-        // std.debug.print("\n", .{});
-    }
 }
