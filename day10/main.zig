@@ -3,6 +3,8 @@ const std = @import("std");
 pub fn main() !void {
     const part1 = try solve(@embedFile("input.txt"), 1);
     std.debug.print("Day 10|1: {d}\n", .{part1});
+    const part2 = try solve(@embedFile("input.txt"), 2);
+    std.debug.print("Day 10|2: {d}\n", .{part2});
 }
 
 const Grid = struct { x: isize = undefined, y: isize = undefined };
@@ -63,8 +65,7 @@ fn GetNextDirection(nextp: u8, direction: Direction) ?Direction {
     }
 }
 
-fn solve(input: []const u8, comptime part: usize) !isize {
-    _ = part;
+fn solve(input: []const u8, comptime part: usize) !usize {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -80,23 +81,44 @@ fn solve(input: []const u8, comptime part: usize) !isize {
             if (c == 'S') start = Grid{ .x = @intCast(j), .y = @intCast(i) };
 
             try map.put(.{ .x = @intCast(j), .y = @intCast(i) }, c);
-
-            // if (c != '.') try map.put(.{ .x = @intCast(j), .y = @intCast(i) }, c);
         }
     }
 
-    var maxDis: isize = 0;
-    for (startPipes, startDir) |sp, sd| {
+    var maxDis: usize = 0;
+    const path = for (startPipes, startDir) |sp, sd| {
         const tmp = try FindPath(&map, start, sd, sp, allocator) orelse continue;
-        maxDis = @max(maxDis, tmp);
-        // std.debug.print("{c},{},{}\n", .{ sp, sd, tmp });
-    }
+        maxDis = @max(maxDis, tmp.len / 2);
+        break tmp;
+    } else return 0;
 
-    return maxDis;
+    if (comptime part == 1) {
+        return maxDis;
+    } else {
+        var vertices = std.ArrayList(Grid).init(allocator);
+        for (path) |p| {
+            const pipe = map.get(p).?;
+            if (pipe == 'F' or pipe == '7' or pipe == 'J' or pipe == 'L') {
+                try vertices.append(p);
+            }
+        }
+
+        var area: isize = 0;
+        for (0..vertices.items.len - 1) |j| {
+            const c = vertices.items[j];
+            const n = vertices.items[j + 1];
+            area += (c.y + n.y) * (c.x - n.x);
+        } else {
+            const c = vertices.items[vertices.items.len - 1];
+            const n = vertices.items[0];
+            area += (c.y + n.y) * (c.x - n.x);
+            area = try std.math.absInt(@divExact(area, 2));
+        }
+        return @intCast(area + 1 - @as(isize, @intCast(path.len / 2)));
+    }
 }
 
-fn FindPath(map: *std.AutoHashMap(Grid, u8), start: Grid, sd: Direction, sp: u8, allocator: std.mem.Allocator) !?isize {
-    var direction = sd; // current direction
+fn FindPath(map: *std.AutoHashMap(Grid, u8), start: Grid, sd: Direction, sp: u8, allocator: std.mem.Allocator) !?[]Grid {
+    var direction = sd;
     var pipe = sp;
     var curr = start;
 
@@ -113,10 +135,8 @@ fn FindPath(map: *std.AutoHashMap(Grid, u8), start: Grid, sd: Direction, sp: u8,
         direction = GetNextDirection(pipe, direction) orelse return null;
 
         try path.append(curr);
-        // std.debug.print("{d},{c}\n", .{ k, pipe });
         if (start.x == curr.x and start.y == curr.y) break;
     }
 
-    // std.debug.print("length: {d}\n", .{path.items.len});
-    return @intCast(path.items.len / 2);
+    return try path.toOwnedSlice();
 }
