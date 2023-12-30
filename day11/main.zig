@@ -2,17 +2,14 @@ const std = @import("std");
 
 pub fn main() !void {
     const part1 = try solve(@embedFile("input.txt"), 1);
-    std.debug.print("Day 10|1: {d}\n", .{part1});
-    // const part2 = try solve(@embedFile("input.txt"), 2);
-    // std.debug.print("Day 10|2: {d}\n", .{part2});
+    std.debug.print("Day 11|1: {d}\n", .{part1});
+    const part2 = try solve(@embedFile("input.txt"), 2);
+    std.debug.print("Day 11|2: {d}\n", .{part2});
 }
 
 const Coordinate = struct { x: isize, y: isize };
 
-const Combination = struct { l: usize, r: usize, d: usize };
-
 fn solve(input: []const u8, comptime part: usize) !usize {
-    _ = part;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -26,35 +23,6 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         try row.appendSlice(line);
     }
 
-    print(&space);
-
-    // add space rows
-    var k: usize = 0;
-    while (k < space.items.len) : (k += 1) {
-        const row = space.items[k];
-        if (std.mem.indexOfScalar(u8, row.items, '#')) |_| {} else {
-            try space.insert(k, std.ArrayList(u8).init(allocator));
-            var newRow = &space.items[k];
-            try newRow.appendNTimes('.', row.items.len);
-            k += 1;
-        }
-    }
-
-    print(&space);
-    // add space vertically
-    k = 0;
-    while (k < space.items[0].items.len) : (k += 1) {
-        for (space.items) |row| {
-            if (row.items[k] == '#') break;
-        } else {
-            for (0..space.items.len) |i| {
-                try space.items[i].insert(k, '.');
-            }
-            k += 1;
-        }
-    }
-
-    print(&space);
     // get galaxy locations
     var galaxies = std.ArrayList(Coordinate).init(allocator);
     for (space.items, 0..) |row, i| {
@@ -63,17 +31,31 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         }
     }
 
-    // var combinations = std.ArrayList(Combination).init(allocator);
+    var vertical = std.ArrayList(isize).init(allocator);
+    for (0..space.items[0].items.len) |i| {
+        for (0..space.items.len) |j| {
+            if (space.items[j].items[i] == '#') break;
+        } else try vertical.append(@intCast(i));
+    }
+
+    var horizontal = std.ArrayList(isize).init(allocator);
+    for (space.items, 0..) |row, j| {
+        if (std.mem.indexOfScalar(u8, row.items, '#')) |_| {} else {
+            try horizontal.append(@intCast(j));
+        }
+    }
+
     var sum: usize = 0;
     for (0..galaxies.items.len - 1) |i| {
-        // var minDist: usize = std.math.maxInt(usize);
         for (i..galaxies.items.len) |j| {
             const l = galaxies.items[i];
             const r = galaxies.items[j];
 
-            const distance = try std.math.absInt(l.x - r.x) + try std.math.absInt(l.y - r.y);
-            // minDist = @min(minDist, @as(usize, @intCast(distance)));
-            // try combinations.append(.{ .x = i, .y = j, .d});
+            var distance = try std.math.absInt(l.x - r.x) + try std.math.absInt(l.y - r.y);
+
+            distance += AddGaps(horizontal.items, @min(l.x, r.x), @max(l.x, r.x), part);
+            distance += AddGaps(vertical.items, @min(l.y, r.y), @max(l.y, r.y), part);
+
             sum += @intCast(distance);
         }
     }
@@ -81,8 +63,11 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     return sum;
 }
 
-fn print(space: *std.ArrayList(std.ArrayList(u8))) void {
-    for (space.items) |row| {
-        std.debug.print("{s}\n", .{row.items});
+fn AddGaps(gaps: []isize, l: isize, r: isize, comptime part: usize) isize {
+    const c = if (comptime part == 1) 1 else 1000000 - 1;
+    var sum: isize = 0;
+    for (gaps) |gap| {
+        if (l < gap and r > gap) sum += c;
     }
+    return sum;
 }
