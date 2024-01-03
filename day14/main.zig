@@ -3,12 +3,11 @@ const std = @import("std");
 pub fn main() !void {
     const part1 = try solve(@embedFile("input.txt"), 1);
     std.debug.print("Day 14|1: {d}\n", .{part1});
-    // const part2 = try solve(@embedFile("test.txt"), 2);
-    // std.debug.print("Day 13|2: {d}\n", .{part2});
+    const part2 = try solve(@embedFile("input.txt"), 2);
+    std.debug.print("Day 14|2: {d}\n", .{part2});
 }
 
 fn solve(input: []const u8, comptime part: usize) !usize {
-    _ = part;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -23,36 +22,33 @@ fn solve(input: []const u8, comptime part: usize) !usize {
 
     var load: usize = 0;
 
-    var pcache = std.ArrayList(std.ArrayListUnmanaged([]u8)).init(allocator);
+    if (comptime part == 1) {
+        Cycle(0, &platform);
+        load = ComputeLoad(platform.items);
+    } else {
+        var pcache = std.ArrayList(std.ArrayListUnmanaged([]u8)).init(allocator);
 
-    var found: usize = 0;
-    outer: for (0..1000) |_| {
-        try pcache.append(try std.ArrayListUnmanaged([]u8).initCapacity(allocator, platform.items.len));
-        var copy = &pcache.items[pcache.items.len - 1];
-        for (platform.items) |src| {
-            try copy.append(allocator, try allocator.dupe(u8, src));
-        }
-
-        for (0..4) |i| {
-            Cycle(i, &platform);
-        }
-
-        for (pcache.items, 0..) |tmp, k| {
-            if (PlatformEqual(platform.items, tmp.items)) {
-                // print(pcache.items[pcache.items.len - 1].items);
-                found = k;
-                break :outer;
+        const cycleIndex = outer: while (true) {
+            try pcache.append(try std.ArrayListUnmanaged([]u8).initCapacity(allocator, platform.items.len));
+            var copy = &pcache.items[pcache.items.len - 1];
+            for (platform.items) |src| {
+                try copy.append(allocator, try allocator.dupe(u8, src));
             }
-        }
-    }
 
-    for (pcache.items, 0..) |*c, m| {
-        std.debug.print("{d}, {d}\n", .{ m, ComputeLoad(c.items) });
-        print(c.items);
-    }
+            for (0..4) |i| {
+                Cycle(i, &platform);
+            }
 
-    const offset = (1000000000 - found) % (pcache.items.len - found);
-    load = ComputeLoad(pcache.items[offset + found].items);
+            for (pcache.items, 0..) |tmp, k| {
+                if (PlatformEqual(platform.items, tmp.items)) {
+                    break :outer k;
+                }
+            }
+        };
+
+        const offset = (1000000000 - cycleIndex) % (pcache.items.len - cycleIndex);
+        load = ComputeLoad(pcache.items[offset + cycleIndex].items);
+    }
 
     return load;
 }
