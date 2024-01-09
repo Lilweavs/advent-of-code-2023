@@ -1,7 +1,7 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const part1 = try solve(@embedFile("input.txt"), 1);
+    const part1 = try solve(@embedFile("test.txt"), 1);
     std.debug.print("Day 19|1: {d}\n", .{part1});
     // const part2 = try solve(@embedFile("test.txt"), 2);
     // std.debug.print("Day 19|2: {d}\n", .{part2});
@@ -10,6 +10,13 @@ pub fn main() !void {
 const Part = struct { x: usize, m: usize, a: usize, s: usize };
 
 const Instruction = struct { category: u8, cmp: u8, val: usize, rule: []const u8 };
+
+const Node = struct {
+    parent: ?*Node = null,
+    left: ?*Node = null,
+    right: ?*Node = null,
+    ins: Instruction,
+};
 
 fn solve(input: []const u8, comptime part: usize) !usize {
     _ = part;
@@ -57,9 +64,6 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         });
     }
 
-    // std.debug.print("plans: {d}\n", .{workflows.capacity()});
-    // std.debug.print("parts: {d}\n", .{parts.items.len});
-
     var sum: usize = 0;
     for (parts.items) |prt| {
         var workflow = workflows.get("in").?;
@@ -105,5 +109,39 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         }
     }
 
+    // create binary tree of poosibilities
+    var tree = Node{ .parent = null, .left = undefined, .right = undefined, .ins = Instruction{ .category = '0', .cmp = '0', .val = 0, .rule = "in" } };
+
+    try AddNode(&tree, 0, workflows, allocator);
+
+    // for (workflow.items) |plan| {
+    //     tree = Node{ .parent = null, .left = undefined, .right = undefined, .ins = plan };
+    // }
     return sum;
+}
+
+fn AddNode(parent: *Node, idx: usize, workflows: std.StringHashMap(std.ArrayList(Instruction)), allocator: std.mem.Allocator) !void {
+    if (parent.ins.rule.len == 1) return;
+    var workflow = workflows.get(parent.ins.rule).?;
+
+    var plan = workflow.items[idx];
+    std.debug.print("{c}{c}{d}:{s}\n", .{ plan.category, plan.cmp, plan.val, plan.rule });
+    var left = try allocator.create(Node);
+    left.parent = parent;
+    left.ins = plan;
+    parent.left = left;
+    try AddNode(left, 0, workflows, allocator);
+
+    // right means failed
+    var right = try allocator.create(Node);
+    right.parent = parent;
+    right.ins = plan;
+    parent.right = right;
+
+    // either reject or ack or goto next
+    if (plan.cmp == '0') {
+        try AddNode(right, 0, workflows, allocator);
+    } else {
+        try AddNode(right, idx + 1, workflows, allocator);
+    }
 }
