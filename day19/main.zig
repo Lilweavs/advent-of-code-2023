@@ -1,15 +1,17 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const part1 = try solve(@embedFile("test.txt"), 1);
+    const part1 = try solve(@embedFile("input.txt"), 1);
     std.debug.print("Day 19|1: {d}\n", .{part1});
-    const part2 = try solve(@embedFile("test.txt"), 2);
+    const part2 = try solve(@embedFile("input.txt"), 2);
     std.debug.print("Day 19|2: {d}\n", .{part2});
 }
 
 const Part = struct { x: usize, m: usize, a: usize, s: usize };
 
 const Instruction = struct { category: u8, cmp: u8, val: usize, rule: []const u8 };
+
+const Range = struct { l: usize, r: usize };
 
 fn solve(input: []const u8, comptime part: usize) !usize {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -57,9 +59,6 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             .s = try std.fmt.parseInt(usize, sItr.next().?, 10),
         });
     }
-
-    std.debug.print("Workflows: {d}\n", .{workflows.capacity()});
-    std.debug.print("Parts: {d}\n", .{parts.items.len});
 
     if (comptime part == 1) {
         var sum: usize = 0;
@@ -109,15 +108,12 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         return sum;
     }
 
-    // create binary tree of poosibilities
     const possibilies = TraverseTree("in", &workflows, Range{ .l = 1, .r = 4000 }, Range{ .l = 1, .r = 4000 }, Range{ .l = 1, .r = 4000 }, Range{ .l = 1, .r = 4000 });
 
     return possibilies;
 }
 
-const Range = struct { l: usize, r: usize };
-
-fn GetInterval(r: Range, cmp: u8, val: usize) Range {
+fn BisectRange(r: Range, cmp: u8, val: usize) Range {
     var range = r;
     if (cmp == '<') {
         if (range.r > val) range.r = val - 1;
@@ -140,7 +136,7 @@ fn TraverseTree(
     var ar = arange;
     var sr = srange;
     if (rule.len == 1 and rule[0] == 'A') {
-        std.debug.print("[{},{}], [{},{}], [{},{}], [{},{}]\n", .{ xr.l, xr.r, mr.l, mr.r, ar.l, ar.r, sr.l, sr.r });
+        // std.debug.print("[{d},{d}], [{d},{d}], [{d},{d}], [{d},{d}]\n", .{ xr.l, xr.r, mr.l, mr.r, ar.l, ar.r, sr.l, sr.r });
         return (xr.r - xr.l + 1) * (mr.r - mr.l + 1) * (ar.r - ar.l + 1) * (sr.r - sr.l + 1); // accepted
     } else if (rule.len == 1 and rule[0] == 'R') return 0; // rejected
     const workflow = workflows.get(rule).?;
@@ -151,42 +147,43 @@ fn TraverseTree(
             switch (plan.category) {
                 'x' => {
                     if (plan.cmp == '<') {
-                        possibilities += TraverseTree(plan.rule, workflows, Range{ .l = xr.l, .r = plan.val - 1 }, mr, ar, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, BisectRange(xr, '<', plan.val), mr, ar, sr);
                         xr.l = plan.val;
                     } else {
-                        possibilities += TraverseTree(plan.rule, workflows, Range{ .l = plan.val + 1, .r = mr.r }, mr, ar, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, BisectRange(xr, '>', plan.val), mr, ar, sr);
                         xr.r = plan.val;
                     }
                 },
                 'm' => {
                     if (plan.cmp == '<') {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, Range{ .l = mr.l, .r = plan.val - 1 }, ar, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, xr, BisectRange(mr, '<', plan.val), ar, sr);
                         mr.l = plan.val;
                     } else {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, Range{ .l = plan.val + 1, .r = mr.r }, ar, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, xr, BisectRange(mr, '>', plan.val), ar, sr);
                         mr.r = plan.val;
                     }
                 },
                 'a' => {
                     if (plan.cmp == '<') {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, Range{ .l = ar.l, .r = plan.val - 1 }, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, BisectRange(ar, '<', plan.val), sr);
                         ar.l = plan.val;
                     } else {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, Range{ .l = plan.val + 1, .r = ar.r }, sr);
+                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, BisectRange(ar, '>', plan.val), sr);
                         ar.r = plan.val;
                     }
                 },
                 's' => {
                     if (plan.cmp == '<') {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, ar, Range{ .l = sr.l, .r = plan.val - 1 });
+                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, ar, BisectRange(sr, '<', plan.val));
                         sr.l = plan.val;
                     } else {
-                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, ar, Range{ .l = plan.val + 1, .r = sr.r });
+                        possibilities += TraverseTree(plan.rule, workflows, xr, mr, ar, BisectRange(sr, '>', plan.val));
                         sr.r = plan.val;
                     }
                 },
                 else => unreachable,
             }
+            if (xr.l > xr.r or mr.l > mr.r or ar.l > ar.r or sr.l > sr.r) return possibilities;
         } else {
             possibilities += TraverseTree(plan.rule, workflows, xr, mr, ar, sr);
         }
