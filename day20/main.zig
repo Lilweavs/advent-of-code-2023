@@ -147,8 +147,10 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     var queue = std.ArrayList(Step).init(allocator);
     // var sizeq = std.ArrayList(usize).init(allocator);
     // _ = sizeq;
-
-    for (0..1) |i| {
+    // var i: usize = 0;
+    // while (i < 1 or !CycleComplete(flipFlopModules.values(), conjunctionModules.values())) : (i += 1) {
+    for (0..1000) |i| {
+        _ = i;
 
         // for (broadcaster.items) |dest| {
         //     try queue.append(.{ .src = "roadcaster", .dest = dest, .pulse = false });
@@ -158,31 +160,34 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         // lPulses += broadcaster.items.len;
 
         // var size: usize = 0;
-        // while (queue.items.len != 0) {
-        for (0..10) |_| {
-            std.debug.print("Q: [ ", .{});
-            for (queue.items) |s| {
-                std.debug.print("{s}, ", .{s.src});
-            } else std.debug.print("]\n", .{});
+        while (queue.items.len != 0) {
+            // for (0..10) |_| {
+            // std.debug.print("Q: [ ", .{});
+            // for (queue.items) |s| {
+            //     std.debug.print("{s}, ", .{s.src});
+            // } else std.debug.print("]\n", .{});
 
             const step = queue.orderedRemove(0);
 
-            // size = if (size == 0) sizeq.pop() else size;
             if (step.pulse) hPulses += 1 else lPulses += 1;
 
-            std.debug.print("{s} {} -> {s}\n", .{ step.src, step.pulse, step.dest });
-            // var state = states.getPtr(step.dest).?;
-            // var pulse: bool = false;
-
-            // var pulse: bool = false;
+            // std.debug.print("{s} {} -> {s}\n", .{ step.src, step.pulse, step.dest });
 
             if (flipFlopModules.getPtr(step.src)) |src| {
-                src.state = !src.state;
+                _ = src;
+                // src.state = !src.state;
+                if (flipFlopModules.getPtr(step.dest)) |ffm| {
+                    if (step.pulse == true) continue;
+                    // src.state = step.pulse;
 
-                if (conjunctionModules.getPtr(step.dest)) |cjm| {
+                    ffm.state = !ffm.state;
+                    for (ffm.outputs.items) |dest| {
+                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = ffm.state });
+                    }
+                } else if (conjunctionModules.getPtr(step.dest)) |cjm| {
                     try cjm.inputs.put(step.src, step.pulse);
 
-                    cjm.state = for (cjm.inputs.values(), cjm.inputs.keys()) |state, key| {
+                    const pulse = for (cjm.inputs.values(), cjm.inputs.keys()) |state, key| {
                         _ = key;
                         // std.debug.print("{s}={} ", .{ key, state });
                         if (state == false) {
@@ -192,54 +197,74 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                     // std.debug.print(" to_send={}\n", .{cjm.state});
 
                     for (cjm.outputs.items) |dest| {
-                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = cjm.state });
-                    }
-                } else if (flipFlopModules.getPtr(step.dest)) |ffm| {
-                    if (step.pulse == true) continue;
-                    for (ffm.outputs.items) |dest| {
-                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = src.state });
+                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = pulse });
                     }
                 } else {
                     // should be rx
                 }
-            } else if (conjunctionModules.getPtr(step.src)) |cjm| {
-                // cjm.state = for (cjm.inputs.values()) |state| {
-                //     if (state == false) break true;
-                // } else false;
-
-                // pulse = step.pulse;
-
-                for (cjm.outputs.items) |dest| {
-                    if (flipFlopModules.contains(dest) or conjunctionModules.contains(dest)) {
-                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = step.pulse });
+            } else if (conjunctionModules.getPtr(step.src)) |src| {
+                _ = src;
+                // _ = src;
+                // src.state = step.pulse;
+                if (flipFlopModules.getPtr(step.dest)) |ffm| {
+                    if (step.pulse == true) continue;
+                    ffm.state = !ffm.state;
+                    for (ffm.outputs.items) |dest| {
+                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = ffm.state });
                     }
+                } else if (conjunctionModules.getPtr(step.dest)) |cjm| {
+                    try cjm.inputs.put(step.src, step.pulse);
+
+                    const pulse = for (cjm.inputs.values(), cjm.inputs.keys()) |state, key| {
+                        _ = key;
+                        // std.debug.print("{s}={} ", .{ key, state });
+                        if (state == false) {
+                            break true;
+                        }
+                    } else false;
+                    // std.debug.print(" to_send={}\n", .{cjm.state});
+
+                    for (cjm.outputs.items) |dest| {
+                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = pulse });
+                    }
+                } else {
+                    // rx
                 }
             } else if (std.mem.eql(u8, "roadcaster", step.src)) {
-                if (conjunctionModules.getPtr(step.dest)) |cjm| {
+                if (flipFlopModules.getPtr(step.dest)) |ffm| {
+                    if (step.pulse == true) continue;
+                    ffm.state = !ffm.state;
+                    for (ffm.outputs.items) |dest| {
+                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = ffm.state });
+                    }
+                } else if (conjunctionModules.getPtr(step.dest)) |cjm| {
+                    try cjm.inputs.put(step.src, step.pulse);
+
+                    const pulse = for (cjm.inputs.values(), cjm.inputs.keys()) |state, key| {
+                        std.debug.print("{s}={} ", .{ key, state });
+                        if (state == false) {
+                            break true;
+                        }
+                    } else false;
+                    _ = pulse;
+                    // std.debug.print(" to_send={}\n", .{cjm.state});
+
                     for (cjm.outputs.items) |dest| {
                         try queue.append(.{ .src = step.dest, .dest = dest, .pulse = false });
                     }
-                } else if (flipFlopModules.getPtr(step.dest)) |ffm| {
-                    for (ffm.outputs.items) |dest| {
-                        try queue.append(.{ .src = step.dest, .dest = dest, .pulse = true });
-                    }
                 } else {
-                    // should be rx
-                }
-                // try queue.append(.{ .src = step.dest, .dest = dest, .pulse = cjm.state });
-                // for (broadcaster.items) |dest| {
-                //     try queue.append(.{ .src = step.dest, .dest = dest, .pulse = false });
-                // }
-            } else if (std.mem.eql(u8, "button", step.src)) {
-                for (broadcaster.items) |dest| {
-                    try queue.append(.{ .src = step.dest, .dest = dest, .pulse = false });
+                    // rx
                 }
             } else {
+                for (broadcaster.items) |dest| {
+                    // if (flipFlopModules.getPtr())
+                    try queue.append(.{ .src = step.dest, .dest = dest, .pulse = false });
+                }
                 // rx
                 // continue;
             }
 
-            std.debug.print("Cycle {d}: {}\n\n", .{ i, CycleComplete(flipFlopModules.values(), conjunctionModules.values()) });
+            // std.debug.print("Cycle {d}: {}\n\n", .{ i, CycleComplete(flipFlopModules.values(), conjunctionModules.values()) });
             // try sizeq.append(output.len);
         }
 
@@ -250,6 +275,8 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     // }
 
     std.debug.print("{d},{d}\n", .{ lPulses, hPulses });
+
+    // return lPulses * hPulses * (1000 / i) * (1000 / i);
 
     return lPulses * hPulses;
 }
