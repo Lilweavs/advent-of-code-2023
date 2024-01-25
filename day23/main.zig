@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub fn main() !void {
     const part1 = try solve(@embedFile("test.txt"), 1);
-    std.debug.print("Day 22|1: {d}\n", .{part1});
+    std.debug.print("Day 23|1: {d}\n", .{part1});
     // const part2 = try solve(@embedFile("input.txt"), 2);
     // std.debug.print("Day 22|2: {d}\n", .{part2});
 }
@@ -39,16 +39,18 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     var pathSplits = std.ArrayList(Split).init(allocator);
 
     // try pathSplits.append(Split{ .idx = 0, .c = 'v' });
-
+    var pathLengths = std.ArrayList(usize).init(allocator);
     var numPaths: usize = 0;
     while (numPaths == 0 or pathSplits.items.len != 0) : (numPaths += 1) {
         var curr = path.getLast();
-        // const split = pathSplits.popOrNull();
 
         if (pathSplits.popOrNull()) |split| {
-            std.debug.print("Split: {c},{d}\n", .{ split.c, split.idx });
+            // std.debug.print("Split: {c},{d}\n", .{ split.c, split.idx });
 
-            try path.resize(split.idx + 1);
+            try path.resize(split.idx);
+            curr = path.getLast();
+
+            // std.debug.print("Path.len: {d}\n", .{path.items.len});
 
             switch (split.c) {
                 'v' => try path.append(.{ .x = curr.x, .y = curr.y + 1 }),
@@ -58,6 +60,7 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         }
 
         curr = path.getLast();
+        // std.debug.print("New Split: {d},{d}\n", .{ curr.y, curr.x });
 
         outer: while (true) {
 
@@ -65,13 +68,13 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             if (path.items[path.items.len - 2].y != curr.y + 1 and map.items[curr.y + 1][curr.x] != '#') {
                 for (curr.y + 1..map.items.len) |j| {
                     if (j == end.y and curr.x == end.x) {
-                        std.debug.print("PathLength: {d}\n", .{path.items.len});
+                        // std.debug.print("PathLength: {d}\n", .{path.items.len});
                         break :outer;
                     }
 
                     const pt = map.items[j][curr.x];
                     if (pt == '.' or pt == 'v') {
-                        std.debug.print("D: {c},{d},{d}\n", .{ pt, j, curr.x });
+                        // std.debug.print("D: {c},{d},{d}\n", .{ pt, j, curr.x });
                         try path.append(Point{ .x = curr.x, .y = j });
                     } else {
                         curr.y = j - 1;
@@ -81,6 +84,7 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                     curr = path.getLast();
                     if (map.items[j - 1][curr.x] == 'v' and map.items[j + 1][curr.x] == 'v') {
                         if (map.items[j][curr.x + 1] == '>') {
+                            // std.debug.print(">: {d},{d}\n", .{ curr.y, curr.x });
                             try pathSplits.append(.{ .idx = path.items.len, .c = '>' });
                         }
                     }
@@ -93,7 +97,7 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                 for (curr.x + 1..map.items[0].len) |i| {
                     const pt = map.items[curr.y][i];
                     if (pt == '.' or pt == '>') {
-                        std.debug.print("R: {c},{d},{d}\n", .{ pt, curr.y, i });
+                        // std.debug.print("R: {c},{d},{d}\n", .{ pt, curr.y, i });
                         try path.append(Point{ .x = i, .y = curr.y });
                     } else {
                         curr.x = i - 1;
@@ -102,22 +106,19 @@ fn solve(input: []const u8, comptime part: usize) !usize {
 
                     if (map.items[curr.y][i - 1] == '>' and map.items[curr.y][i + 1] == '>') {
                         if (map.items[curr.y + 1][i] == 'v') {
+                            // std.debug.print("v: {d},{d}\n", .{ curr.y, curr.x });
                             try pathSplits.append(.{ .idx = path.items.len, .c = 'v' });
                         }
                     }
                 }
             }
             curr = path.getLast();
-            var prev = path.items[path.items.len - 2];
-            // std.debug.print("curr: {d},{d}\n", .{ curr.y, curr.x });
-            // std.debug.print("curr: {d},{d}\n", .{ curr.y, curr.x });
-            // std.debug.print("prev: {d},{d}\n", .{ prev.y, prev.x });
             // left is not in path
             if (path.items[path.items.len - 2].x != curr.x - 1 and map.items[curr.y][curr.x - 1] != '#') {
                 for (1..curr.x) |i| {
                     const pt = map.items[curr.y][curr.x - i];
                     if (pt == '.' or pt == '>') {
-                        std.debug.print("L: {c},{d},{d}\n", .{ pt, curr.y, curr.x - i });
+                        // std.debug.print("L: {c},{d},{d}\n", .{ pt, curr.y, curr.x - i });
                         try path.append(Point{ .x = curr.x - i, .y = curr.y });
                     } else {
                         curr.x = curr.x - i + 1;
@@ -127,15 +128,12 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             }
 
             curr = path.getLast();
-            prev = path.items[path.items.len - 2];
-            std.debug.print("curr: {d},{d}\n", .{ curr.y, curr.x });
-            std.debug.print("prev: {d},{d}\n", .{ prev.y, prev.x });
             // left is not in path
             if (path.items[path.items.len - 2].y != curr.y - 1 and map.items[curr.y - 1][curr.x] != '#') {
                 for (1..curr.y) |j| {
                     const pt = map.items[curr.y - j][curr.x];
                     if (pt == '.') {
-                        std.debug.print("U: {c},{d},{d}\n", .{ pt, curr.y - j, curr.x });
+                        // std.debug.print("U: {c},{d},{d}\n", .{ pt, curr.y - j, curr.x });
                         try path.append(Point{ .x = curr.x, .y = curr.y - j });
                     } else {
                         curr.y = curr.y - j + 1;
@@ -152,7 +150,13 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             //     unreachable;
             // }
         }
+        try pathLengths.append(path.items.len);
     }
+    var maxPath: usize = 0;
+    for (pathLengths.items) |len| {
+        maxPath = @max(maxPath, len);
+        std.debug.print("{d} ", .{len});
+    } else std.debug.print("\n", .{});
 
-    return 0;
+    return maxPath;
 }
