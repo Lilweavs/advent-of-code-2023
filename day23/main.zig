@@ -44,6 +44,8 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     while (numPaths == 0 or pathSplits.items.len != 0) : (numPaths += 1) {
         var curr = path.getLast();
 
+        // std.debug.print("q: {d}\n", .{pathSplits.items.len});
+
         if (pathSplits.popOrNull()) |split| {
             // std.debug.print("Split: {c},{d}\n", .{ split.c, split.idx });
 
@@ -55,6 +57,8 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             switch (split.c) {
                 'v' => try path.append(.{ .x = curr.x, .y = curr.y + 1 }),
                 '>' => try path.append(.{ .x = curr.x + 1, .y = curr.y }),
+                '<' => try path.append(.{ .x = curr.x - 1, .y = curr.y }),
+                '^' => try path.append(.{ .x = curr.x, .y = curr.y - 1 }),
                 else => unreachable,
             }
         }
@@ -72,6 +76,8 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                         break :outer;
                     }
 
+                    if (isInPath(Point{ .x = curr.x, .y = j }, path.items)) break :outer;
+
                     const pt = map.items[j][curr.x];
                     if (pt == '.' or pt == 'v') {
                         // std.debug.print("D: {c},{d},{d}\n", .{ pt, j, curr.x });
@@ -87,6 +93,10 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                             // std.debug.print(">: {d},{d}\n", .{ curr.y, curr.x });
                             try pathSplits.append(.{ .idx = path.items.len, .c = '>' });
                         }
+                        if (map.items[j][curr.x - 1] == '>') {
+                            // std.debug.print(">: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = '<' });
+                        }
                     }
                 }
             }
@@ -96,6 +106,7 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             if (path.items[path.items.len - 1].x != curr.x + 1 and map.items[curr.y][curr.x + 1] != '#') {
                 for (curr.x + 1..map.items[0].len) |i| {
                     const pt = map.items[curr.y][i];
+                    if (isInPath(Point{ .x = i, .y = curr.y }, path.items)) break :outer;
                     if (pt == '.' or pt == '>') {
                         // std.debug.print("R: {c},{d},{d}\n", .{ pt, curr.y, i });
                         try path.append(Point{ .x = i, .y = curr.y });
@@ -109,6 +120,10 @@ fn solve(input: []const u8, comptime part: usize) !usize {
                             // std.debug.print("v: {d},{d}\n", .{ curr.y, curr.x });
                             try pathSplits.append(.{ .idx = path.items.len, .c = 'v' });
                         }
+                        if (map.items[curr.y - 1][i] == 'v') {
+                            // std.debug.print("v: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = '^' });
+                        }
                     }
                 }
             }
@@ -117,12 +132,23 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             if (path.items[path.items.len - 2].x != curr.x - 1 and map.items[curr.y][curr.x - 1] != '#') {
                 for (1..curr.x) |i| {
                     const pt = map.items[curr.y][curr.x - i];
+                    if (isInPath(Point{ .x = curr.x - i, .y = curr.y }, path.items)) break :outer;
                     if (pt == '.' or pt == '>') {
                         // std.debug.print("L: {c},{d},{d}\n", .{ pt, curr.y, curr.x - i });
                         try path.append(Point{ .x = curr.x - i, .y = curr.y });
                     } else {
                         curr.x = curr.x - i + 1;
                         break;
+                    }
+                    if (map.items[curr.y][i - 1] == '>' and map.items[curr.y][i + 1] == '>') {
+                        if (map.items[curr.y + 1][i] == 'v') {
+                            // std.debug.print("v: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = 'v' });
+                        }
+                        if (map.items[curr.y - 1][i] == 'v') {
+                            // std.debug.print("v: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = '^' });
+                        }
                     }
                 }
             }
@@ -132,23 +158,26 @@ fn solve(input: []const u8, comptime part: usize) !usize {
             if (path.items[path.items.len - 2].y != curr.y - 1 and map.items[curr.y - 1][curr.x] != '#') {
                 for (1..curr.y) |j| {
                     const pt = map.items[curr.y - j][curr.x];
-                    if (pt == '.') {
+                    if (isInPath(Point{ .x = curr.x, .y = curr.y - j }, path.items)) break :outer;
+                    if (pt == '.' or pt == 'v') {
                         // std.debug.print("U: {c},{d},{d}\n", .{ pt, curr.y - j, curr.x });
                         try path.append(Point{ .x = curr.x, .y = curr.y - j });
                     } else {
                         curr.y = curr.y - j + 1;
                         break;
                     }
+                    if (map.items[j - 1][curr.x] == 'v' and map.items[j + 1][curr.x] == 'v') {
+                        if (map.items[j][curr.x + 1] == '>') {
+                            // std.debug.print(">: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = '>' });
+                        }
+                        if (map.items[j][curr.x - 1] == '>') {
+                            // std.debug.print(">: {d},{d}\n", .{ curr.y, curr.x });
+                            try pathSplits.append(.{ .idx = path.items.len, .c = '<' });
+                        }
+                    }
                 }
             }
-
-            // if (map.items[curr.y + 1][curr.x] == '.' or map.items[curr.y + 1][curr.x] == 'v') {}
-
-            // if (map.items[curr.y][curr.x + 1] == '.') {} else if (map.items[curr.y][curr.x - 1] == '.') {
-            // } else if (map.items[curr.y - 1][curr.x] == '.') {
-            // } else {
-            //     unreachable;
-            // }
         }
         try pathLengths.append(path.items.len);
     }
@@ -159,4 +188,10 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     } else std.debug.print("\n", .{});
 
     return maxPath;
+}
+
+fn isInPath(needle: Point, haystack: []Point) bool {
+    for (haystack) |p| {
+        if (needle.x == p.x and needle.y == p.y) return true;
+    } else return false;
 }
