@@ -17,17 +17,16 @@ fn solve(input: []const u8, comptime part: usize) !usize {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    var lines = std.mem.splitSequence(u8, input, "\r\n");
+    var lines = std.mem.tokenize(u8, input, "\r\n");
 
     var map = std.ArrayList([]const u8).init(allocator);
 
     while (lines.next()) |line| {
-        if (line.len == 0) continue;
         try map.append(line);
     }
 
-    const start = Point{ .x = 1, .y = 0 };
-    const end = Point{ .x = map.items[0].len - 2, .y = map.items.len - 1 };
+    const start = Point{ .x = std.mem.indexOfScalar(u8, map.items[0], '.').?, .y = 0 };
+    const end = Point{ .x = std.mem.indexOfScalar(u8, map.items[map.items.len - 1], '.').?, .y = map.items.len - 1 };
 
     std.debug.print("End: {d},{d}\n", .{ end.y, end.x });
 
