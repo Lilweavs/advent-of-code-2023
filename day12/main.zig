@@ -1,16 +1,15 @@
 const std = @import("std");
 
 pub fn main() !void {
-    const part1 = try solve(@embedFile("input.txt"), 1);
-    std.debug.print("Day 11|1: {d}\n", .{part1});
-    // const part2 = try solve(@embedFile("input.txt"), 2);
-    // std.debug.print("Day 11|2: {d}\n", .{part2});
+    const part1 = try solve(@embedFile("test.txt"), 1);
+    std.debug.print("Day 12|1: {d}\n", .{part1});
+    const part2 = try solve(@embedFile("test.txt"), 2);
+    std.debug.print("Day 12|2: {d}\n", .{part2});
 }
 
 const Record = struct { springs: []const u8 = undefined, record: []u8 = undefined };
 
 fn solve(input: []const u8, comptime part: usize) !usize {
-    _ = part;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
@@ -24,108 +23,118 @@ fn solve(input: []const u8, comptime part: usize) !usize {
         var record = &records.items[records.items.len - 1];
 
         var tokens = std.mem.tokenize(u8, line, " ,");
+        const strPtr = tokens.next().?;
 
-        record.springs = tokens.next().?;
+        var string = std.ArrayList(u8).init(allocator);
+
+        try string.appendSlice(strPtr);
 
         var array = std.ArrayList(u8).init(allocator);
         while (tokens.next()) |num| {
             try array.append(try std.fmt.parseInt(u8, num, 10));
         }
 
+        if (part == 2) {
+            for (0..4) |_| {
+                try string.append('?');
+                try string.appendSlice(strPtr);
+            }
+            const tmp = try allocator.dupe(u8, array.items);
+            for (0..4) |_| {
+                try array.appendSlice(tmp);
+            }
+        }
+
+        try string.appendSlice("..");
+        try array.append(0);
+
+        record.springs = try string.toOwnedSlice();
         record.record = try array.toOwnedSlice();
     }
 
-    for (records.items) |record| {
-        std.debug.print("{s}\n", .{record.springs});
+    var sum: usize = 0;
+    for (records.items) |r| {
+        sum += try calculateSpringPermutations(r.springs, r.record, allocator);
     }
 
-    // var rec = records.getLast();
-
-    // var qcnt: usize = 0;
-    // for (rec.springs) |c| {
-    //     if (c == '?') qcnt += 1;
-    // }
-
-    // std.debug.print("{}\n", .{CheckSpringValidity(rec)});
-
-    // get every permutation
-    var validPermutations: usize = 0;
-
-    for (records.items, 0..) |record, n| {
-        var qcnt: usize = 0;
-        var badCount: usize = 0;
-        for (record.springs) |c| {
-            if (c == '?') qcnt += 1;
-            if (c == '#') badCount += 1;
-        }
-
-        var needed: usize = 0;
-        for (record.record) |num| needed += num;
-
-        const numPermutations = try std.math.powi(usize, 2, qcnt);
-        for (0..numPermutations) |i| {
-            var springs = try std.mem.Allocator.dupe(allocator, u8, record.springs);
-            defer allocator.free(springs);
-
-            var numSet: usize = 0;
-            for (0..qcnt) |shift| {
-                const idx = std.mem.indexOfScalar(u8, springs, '?').?;
-                if ((i >> @as(u6, @intCast(shift)) & 1) == 1) {
-                    numSet += 1;
-                    springs[idx] = '#';
-                } else {
-                    springs[idx] = '.';
-                }
-            }
-
-            if (numSet + badCount != needed) continue;
-
-            if (CheckSpringValidity(springs, record.record)) {
-                validPermutations += 1;
-                // std.debug.print("{s} G\n", .{springs});
-            } else {
-                // std.debug.print("{s} B\n", .{springs});
-            }
-        }
-        std.debug.print("{d}\n", .{n});
-    }
-
-    // for (rec.record) |num| {
-    //     // get every permutation
-
-    //     for (sidx..springs.len) |i| {
-    //         if (springs[i] == '.') continue;
-
-    //         if (num + i == springs.len) break; // not possible
-
-    //         for (0..num) |j| {
-    //             springs[i + j] = '#';
-    //             std.debug.print("{s}\n", .{springs});
-    //         } else {
-    //             if (springs[i + num] == '?' or springs[i + num] == '.') {
-    //                 springs[i + num] = '.';
-    //             }
-    //         }
-    //     }
-    // }
-
-    return validPermutations;
+    return sum;
 }
 
-fn CheckSpringValidity(springs: []u8, record: []u8) bool {
-    var k: usize = 0;
-    var sidx: usize = 0;
-    while (std.mem.indexOfScalarPos(u8, springs, sidx, '#')) |i| : (k += 1) {
-        if (k == record.len) return false;
-        const num = record[k];
-        // if (sidx + num > record.springs.len) return false;
+fn calculateSpringPermutations(spring: []const u8, record: []u8, allocator: std.mem.Allocator) !usize {
+    var sum: usize = 0;
 
-        for (0..num) |j| {
-            // std.debug.print("{d},{c}\n", .{ i, springs[i + j] });
-            if (springs[i + j] != '#') return false;
-        }
-        if (i + num < springs.len and springs[i + num] == '#') return false;
-        sidx = i + num;
+    var permutationGrid = std.ArrayList(std.ArrayList(usize)).init(allocator);
+
+    try permutationGrid.append(try std.ArrayList(usize).initCapacity(allocator, spring.len));
+    var tmp = &permutationGrid.items[permutationGrid.items.len - 1];
+    tmp.appendNTimesAssumeCapacity(0, spring.len);
+    for (0..spring.len) |i| {
+        if (spring[spring.len - 1 - i] == '#') break else tmp.items[tmp.items.len - 1 - i] = 1;
     }
+
+    try permutationGrid.append(try std.ArrayList(usize).initCapacity(allocator, spring.len));
+    tmp = &permutationGrid.items[permutationGrid.items.len - 1];
+    tmp.appendNTimesAssumeCapacity(0, spring.len);
+
+    for (1..record.len) |i| {
+        const prevRow = permutationGrid.items[(i - 1) % 2].items;
+        const row = permutationGrid.items[i % 2].items;
+        @memset(row, 0);
+
+        const num = record[record.len - 1 - i];
+
+        const sidx: usize = for (0..prevRow.len) |j| {
+            if (prevRow[prevRow.len - 1 - j] != 0) break j + record[record.len - 1 - i] + 1;
+        } else 2;
+
+        // printTable(spring, permutationGrid, sidx);
+
+        for (sidx..spring.len) |j| {
+            const c = spring[spring.len - 1 - j];
+            if (c == '?') {
+                row[row.len - 1 - j] = row[row.len - j];
+                if (validSpring(spring[(spring.len - 1 - j)..], num)) {
+                    row[row.len - 1 - j] += prevRow[prevRow.len - 1 - j + num + 1];
+                }
+            } else if (c == '.') {
+                row[row.len - 1 - j] = row[row.len - j];
+            } else {
+                if (validSpring(spring[(spring.len - 1 - j)..], num)) {
+                    row[row.len - 1 - j] += prevRow[prevRow.len - 1 - j + num + 1];
+                }
+            }
+        }
+    }
+
+    // printTable(spring, permutationGrid, sidx);
+
+    sum += permutationGrid.items[(record.len - 1) % 2].items[0];
+    return sum;
+}
+
+fn printTable(spring: []const u8, pg: std.ArrayList(std.ArrayList(usize)), sidx: usize) void {
+    for (0..spring.len) |i| {
+        if (i == spring.len - sidx - 1) std.debug.print("{c:3}", .{'v'}) else std.debug.print("{c:3}", .{' '});
+    } else std.debug.print("\n", .{});
+
+    for (spring) |c| {
+        std.debug.print("{c:3}", .{c});
+    } else std.debug.print("\n", .{});
+
+    for (pg.items) |row| {
+        for (row.items) |num| {
+            std.debug.print("{d:3}", .{num});
+        } else std.debug.print("\n", .{});
+    }
+}
+
+fn validSpring(spring: []const u8, num: usize) bool {
+    if (num > spring.len) return false;
+    for (0..num) |i| {
+        if (spring[i] == '.') return false;
+    }
+
+    if (num < spring.len and spring[num] == '#') return false;
+
     return true;
 }
